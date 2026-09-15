@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Project, ProjectSector, User } from '../../types';
 import { StatusBadge } from './StatusBadge';
+import { ProjectCard } from './ProjectCard';
 import { matchSector } from '../../data/userStore';
 
 interface AllProjectsViewProps {
@@ -279,75 +280,13 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredProjects.map((p) => {
-            const cost = p.costCr || p.revisedBudgetCr || p.originalBudgetCr || 0;
-            const progress = p.physicalProgress || p.actualPhysicalProgress || 0;
-            const coverImage = p.images?.[0]?.url || 'https://images.unsplash.com/photo-1545459720-aac8509eb02c?auto=format&fit=crop&q=80&w=800';
-
-            return (
-              <div
-                key={p.id}
-                onClick={() => onSelectProject(p.id)}
-                className="gov-card flex flex-col justify-between overflow-hidden cursor-pointer transition hover:border-blue-300 hover:shadow-md group"
-              >
-                <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                  <img
-                    src={coverImage}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
-                  <div className="absolute top-3 right-3 shadow-xs">
-                    <StatusBadge status={p.status} size="sm" />
-                  </div>
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-0.5 rounded bg-blue-900/90 text-white text-[11px] font-bold tracking-wide">
-                      {p.sector}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-2.5 left-3 right-3 text-white">
-                    <div className="text-[11px] font-mono text-blue-200">{p.code}</div>
-                    <div className="text-xs font-semibold flex items-center gap-1 text-slate-100">
-                      <MapPin size={12} className="text-amber-400 shrink-0" />
-                      <span className="truncate">{p.locationName}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-700 transition leading-snug">
-                      {p.name}
-                    </h3>
-                    <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs py-2 px-3 bg-slate-50 rounded-lg border border-slate-100">
-                      <div>
-                        <span className="text-[11px] text-slate-500 block">Cost</span>
-                        <strong className="text-sm text-slate-900 font-bold">
-                          ₹{cost.toLocaleString()} Cr
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-slate-500 block">Last Updated</span>
-                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                          <Calendar size={12} className="text-slate-400 shrink-0" />
-                          <span>{p.lastUpdated || '12 Sep 2026'}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-600">Progress: <strong>{progress}%</strong></span>
-                    <span className="font-bold text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition">
-                      <span>View Details</span>
-                      <ChevronRight size={14} />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredProjects.map((p) => (
+            <ProjectCard
+              key={p.id}
+              project={p}
+              onSelect={() => onSelectProject(p.id)}
+            />
+          ))}
         </div>
       )}
     </div>

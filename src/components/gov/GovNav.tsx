@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, FolderKanban, FileText, Users, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, FileText, Users, FileDown, Menu, X } from 'lucide-react';
 import type { UserRole } from '../../types';
 
 interface GovNavProps {
@@ -28,9 +28,16 @@ export const GovNav: React.FC<GovNavProps> = ({
     },
     {
       id: 'all_projects',
-      label: isAdmin ? 'All Projects (National)' : 'Sector Projects',
+      label: isAdmin ? 'All Projects (Multi-Sector)' : 'Sector Projects',
       icon: FolderKanban,
       description: 'Search & filter directory'
+    },
+    {
+      id: 'reports',
+      label: 'Reports & Downloads',
+      icon: FileDown,
+      description: 'Project dossiers & CSV/PDF export',
+      badge: 'Export'
     },
     {
       id: 'project_detail',
@@ -91,7 +98,7 @@ export const GovNav: React.FC<GovNavProps> = ({
           {/* Quick Notice Tag on Desktop */}
           <div className="hidden md:flex items-center text-xs text-blue-200 gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium text-slate-100">SIH 2026 National Surveillance Online</span>
+            <span className="font-medium text-slate-100">PREVISION Surveillance Active</span>
           </div>
 
           {/* Mobile Menu Button */}

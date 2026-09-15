@@ -280,12 +280,13 @@ export interface RiskFactorExplanation {
     | 'Environmental / Geotechnical' 
     | 'Cost Escalation' 
     | 'Technical';
-  detail: string;
+  detail?: string;
 }
 
 export interface Milestone {
   id: string;
   name: string;
+  title?: string;
   description?: string;
   plannedStartDate?: string;
   plannedEndDate?: string;
@@ -354,12 +355,155 @@ export interface Project {
   costOverrunForecastCr: number;
   status: ProjectStatus;
   
+  // PRAEVISIO Framework Fields (Maharashtra Multi-Sector Project Register)
+  stage?: string; // e.g. "Construction", "Approved / pre-construction", "Tender stage", "Implementation"
+  knownDetails?: string; // Recorded details from research register / PAIMANA
+  likelyRiskCauses?: string; // Explain Cause (geology, utilities, land, port permissions, etc.)
+  earlyWarning?: string; // Early Warning alert criteria
+  recommendedAction?: string; // Dated recommended action with designated owner
+  
   // Images, Milestones & Audit
   images?: ProjectImage[];
-  riskFactors: RiskFactorExplanation[];
+  riskFactors?: RiskFactorExplanation[];
   milestones: Milestone[];
-  sCurveData: { month: string; target: number; actual: number; predicted: number }[];
-  auditTrail: ProjectAuditLog[];
+  sCurveData?: { month: string; target: number; actual: number; predicted: number }[];
+  auditTrail?: ProjectAuditLog[];
+
+  // PREVISION Multi-Horizon ML Prediction & EVM Fields
+  lengthKm?: number;
+  commissionedLengthKm?: number;
+  projectTypeCategory?: string;
+  progressGap?: number; // Planned % - Actual %
+  spi?: number; // Schedule Performance Index (EV / PV)
+  cpi?: number; // Cost Performance Index (EV / AC)
+  scheduleVarianceCr?: number; // EV - PV in ₹ Cr
+  costVarianceCr?: number; // EV - AC in ₹ Cr
+  eacCr?: number; // Estimate at Completion in ₹ Cr
+  costOverrunProb6m?: number; // %
+  costOverrunProb12m?: number; // %
+  delayProb3m?: number; // %
+  delayProb6m?: number; // %
+  delayProb12m?: number; // %
+  forecastDelayDays3m?: number;
+  forecastDelayDays6m?: number;
+  forecastDelayDays12m?: number;
+  milestoneAtRisk?: string;
+  milestoneFailureProb?: number; // %
+  criticalDependencyRisk?: string;
+  shapDrivers?: {
+    feature: string;
+    impact: number; // e.g. +18 or -10 points
+    explanation: string;
+    direction: 'increase' | 'decrease';
+  }[];
+  earlyWarningRules?: {
+    id: string;
+    trigger: string;
+    level: 'Amber' | 'Orange' | 'Red';
+    action: string;
+    status: 'Active' | 'Normal';
+  }[];
+  monthlyHistory?: {
+    month: string;
+    plannedProgress: number;
+    actualProgress: number;
+    progressGap: number;
+    spi: number;
+    cpi: number;
+    landPendingPct?: number;
+    criticalIssueAgeDays?: number;
+    delayProb: number;
+    alertLevel: 'Green' | 'Amber' | 'Orange' | 'Red';
+  }[];
+  actionOwner?: string;
+  actionDeadline?: string;
+  closureProofRequired?: string;
+
+  // Road & Highway Specific Attributes
+  roadClassification?: 'NH' | 'Expressway' | 'BOT' | 'HAM' | 'EPC' | 'PMGSY' | 'Bridge/Tunnel' | string;
+  roadLengthKm?: number;
+  lanes?: string | number;
+  structuresCount?: string;
+  structuresCompleted?: number;
+  landPossessionPct?: number;
+  forestClearanceStatus?: string;
+  utilityClearanceStatus?: string;
+  utilityShiftingPending?: number;
+  modelConfidence?: string;
+  isAwaitingMonthlyUpdate?: boolean;
+  monthlyUpdateStatusText?: string;
+
+  // Sector-Specific Metrics & Special Surveillance Attributes
+  // Water Resources
+  headworksProgressPct?: number;
+  canalsProgressPct?: number;
+  canalNetworkProgressPct?: number;
+  commandAreaHectares?: number;
+  subSchemesCount?: number | string;
+  irrigationPotentialCreatedHa?: number;
+  irrigationPotentialTargetHa?: number;
+
+  // Airports / Commissioning Readiness
+  runwayLengthMeters?: number;
+  terminalCapacityMPPA?: number;
+  dgcaLicensingStatus?: string;
+  commissioningReadinessScore?: number;
+  readinessChecklist?: {
+    id?: string;
+    item: string;
+    category?: string;
+    status: 'Ready' | 'In Progress' | 'Delayed' | 'Critical' | 'Completed' | 'Pending Inspection';
+    agency?: string;
+    responsibleAgency?: string;
+    targetDate?: string;
+    details?: string;
+    notes?: string;
+  }[];
+
+  // Ports / Multimodal Programme Packages
+  programmePackages?: {
+    id?: string;
+    packageId?: string;
+    name?: string;
+    packageName?: string;
+    category?: string;
+    contractType?: string;
+    contractorOrConcessionaire?: string;
+    contractor?: string;
+    costCr?: number;
+    status: 'Pre-construction' | 'Tendering' | 'Under Construction' | 'Operational' | 'Delayed' | 'Completed' | 'In Progress';
+    progressPct?: number;
+    progressPercentage?: number;
+    completionTarget?: string;
+  }[];
+
+  // Power & Renewable Energy
+  generationCapacityMW?: number;
+  storageCapacityMWh?: number;
+  evacuationReadinessStatus?: string;
+  towersErectedCount?: number;
+  towersTargetCount?: number;
+  stringingKmCompleted?: number;
+  stringingKmTarget?: number;
+
+  // Urban Transport (Metro)
+  undergroundRouteKm?: number;
+  elevatedRouteKm?: number;
+  depotLandStatus?: string;
+
+  // Cross-Sector Dependencies (e.g. Ports -> Road/Rail evacuation, Airport -> Metro Line 8)
+  crossSectorDependencies?: {
+    id?: string;
+    linkedProjectId?: string;
+    linkedProjectName: string;
+    linkedSector: ProjectSector | string;
+    dependencyType: 'Rail Evacuation' | 'Road Evacuation' | 'Airport Metro Connector' | 'Power Evacuation' | 'Water Reservoir Access' | 'Last-Mile Canal' | 'Interchange' | 'Feedstock/Water' | 'Hinterland Connectivity' | 'Utility Relocation' | 'Drainage/Flood' | 'Environmental Buffer' | string;
+    status: 'On Track' | 'At Risk' | 'Delayed' | 'Completed' | 'Critical Bottleneck';
+    criticality: 'High' | 'Medium' | 'Low';
+    summary: string;
+    responsibleDepartment?: string;
+    targetResolutionDate?: string;
+  }[];
 }
 
 export interface ProjectRisk {

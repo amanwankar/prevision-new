@@ -2,6 +2,14 @@ import type { StoredUser, User, ProjectSector } from '../types';
 
 export const STORAGE_USERS_TABLE_KEY = 'sih26103_users_table_v4';
 
+import {
+  getUsersTable,
+  createStoredUser as dbCreateStoredUser,
+  updateUserSector as dbUpdateUserSector,
+  deleteStoredUser as dbDeleteStoredUser,
+  authenticate as dbAuthenticate
+} from '../services/unifiedDatabase';
+
 // Initial pre-seeded users table compliant with the requested table schema:
 // user_id, password_hash, name, sector, role, created_at
 export const INITIAL_USERS_TABLE: StoredUser[] = [
@@ -72,73 +80,32 @@ export const INITIAL_USERS_TABLE: StoredUser[] = [
 ];
 
 /**
- * Retrieves the users table from localStorage or seeds it with initial default records.
+ * Retrieves the users table from unified database
  */
 export function getStoredUsers(): StoredUser[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_USERS_TABLE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to load users table from localStorage', e);
-  }
-  // Initialize default table
-  try {
-    localStorage.setItem(STORAGE_USERS_TABLE_KEY, JSON.stringify(INITIAL_USERS_TABLE));
-  } catch (e) {
-    console.error('Failed to save default users table to localStorage', e);
-  }
-  return INITIAL_USERS_TABLE;
+  return getUsersTable();
 }
 
 /**
- * Persists the users table to localStorage.
+ * Persists the users table to localStorage (compatibility wrapper)
  */
-export function saveStoredUsers(users: StoredUser[]): void {
-  try {
-    localStorage.setItem(STORAGE_USERS_TABLE_KEY, JSON.stringify(users));
-  } catch (e) {
-    console.error('Failed to persist users table', e);
-  }
+export function saveStoredUsers(_users: StoredUser[]): void {
+  // unifiedDatabase handles persistence automatically
 }
 
 /**
  * Checks credentials against the stored users table.
- * Returns the matching StoredUser with assigned sector or null if invalid.
  */
 export function authenticateUser(
   userIdInput: string,
   passwordInput: string,
   requiredRole?: 'officer' | 'admin'
 ): StoredUser | null {
-  const users = getStoredUsers();
-  const normalizedId = userIdInput.trim().toLowerCase();
-
-  const user = users.find(
-    (u) => u.user_id.toLowerCase() === normalizedId
-  );
-
-  if (!user) return null;
-
-  // Simple string comparison for demo password_hash
-  if (user.password_hash !== passwordInput.trim()) {
-    return null;
-  }
-
-  if (requiredRole && user.role !== requiredRole) {
-    return null;
-  }
-
-  return user;
+  return dbAuthenticate(userIdInput, passwordInput, requiredRole);
 }
 
 /**
  * Creates a new user record in the users table (Admin only).
- * Enforces unique user_id and exact fields: user_id, password_hash, name, sector, role, created_at.
  */
 export function createStoredUser(newUser: {
   user_id: string;
@@ -147,75 +114,21 @@ export function createStoredUser(newUser: {
   sector: string;
   role?: 'officer' | 'admin';
 }): { success: boolean; error?: string; user?: StoredUser } {
-  const users = getStoredUsers();
-  const normalizedId = newUser.user_id.trim().toLowerCase();
-
-  if (!normalizedId) {
-    return { success: false, error: 'User ID cannot be empty.' };
-  }
-  if (!newUser.name.trim()) {
-    return { success: false, error: 'Full Name cannot be empty.' };
-  }
-  if (!newUser.password_hash.trim()) {
-    return { success: false, error: 'Password cannot be empty.' };
-  }
-  if (!newUser.sector.trim()) {
-    return { success: false, error: 'Please select an assigned sector.' };
-  }
-
-  // Check unique user_id
-  const exists = users.some((u) => u.user_id.toLowerCase() === normalizedId);
-  if (exists) {
-    return { success: false, error: `User ID "${newUser.user_id}" already exists. Please choose a unique ID.` };
-  }
-
-  const record: StoredUser = {
-    user_id: newUser.user_id.trim(),
-    password_hash: newUser.password_hash.trim(),
-    name: newUser.name.trim(),
-    sector: newUser.sector.trim(),
-    role: newUser.role || 'officer',
-    created_at: new Date().toISOString().split('T')[0]
-  };
-
-  const updated = [record, ...users];
-  saveStoredUsers(updated);
-
-  return { success: true, user: record };
+  return dbCreateStoredUser(newUser);
 }
 
 /**
  * Deletes a user by user_id.
  */
 export function deleteStoredUser(userId: string): boolean {
-  const users = getStoredUsers();
-  const filtered = users.filter((u) => u.user_id !== userId);
-  if (filtered.length !== users.length) {
-    saveStoredUsers(filtered);
-    return true;
-  }
-  return false;
+  return dbDeleteStoredUser(userId);
 }
 
 /**
  * Updates a user's assigned sector.
  */
 export function updateStoredUserSector(userId: string, newSector: string): boolean {
-  const users = getStoredUsers();
-  let found = false;
-  const updated = users.map((u) => {
-    if (u.user_id === userId) {
-      found = true;
-      return { ...u, sector: newSector };
-    }
-    return u;
-  });
-
-  if (found) {
-    saveStoredUsers(updated);
-    return true;
-  }
-  return false;
+  return dbUpdateUserSector(userId, newSector);
 }
 
 /**

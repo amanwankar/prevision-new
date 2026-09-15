@@ -1,6 +1,6 @@
 {
-  "name": "SIH26103 — National Infrastructure Project Monitoring Portal",
-  "description": "Government infrastructure project-monitoring portal for sector officers and administration with real-time health tracking, project maps, and inspection intelligence.",
+  "name": "PREVISION",
+  "description": "PREVISION Multi-Sector Infrastructure Project Monitoring & Early Warning Portal: Predict Risk, Explain Cause, Early Warning, and Recommended Action across infrastructure sectors.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -113,8 +113,8 @@ export const Login: React.FC<LoginProps> = ({
                     </>
                   ) : (
                     <>
-                      <span className="text-[10px] text-amber-300 uppercase tracking-widest font-semibold">GOI</span>
-                      <span className="text-base font-extrabold text-white">SIH</span>
+                      <span className="text-[10px] text-amber-300 uppercase tracking-widest font-semibold">PRE</span>
+                      <span className="text-base font-extrabold text-white">VISION</span>
                     </>
                   )}
                 </div>
@@ -122,19 +122,19 @@ export const Login: React.FC<LoginProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs uppercase tracking-wider text-slate-300 font-semibold">
-                      Government of India
+                      PREVISION Platform
                     </span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded border ${isAdminRoute ? 'text-amber-300 bg-amber-950/80 border-amber-600' : 'text-amber-300 bg-blue-950/80 border-blue-800'}`}>
                       {isAdminRoute ? 'RESTRICTED ADMIN ROUTE' : 'SECTOR OFFICER PORTAL'}
                     </span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">
-                    {isAdminRoute ? 'Central Administration Gateway' : 'National Infrastructure Monitoring Portal'}
+                    {isAdminRoute ? 'Central Administration Gateway' : 'Infrastructure Project Monitoring Portal'}
                   </h2>
                   <p className="text-xs text-slate-300 mt-1">
                     {isAdminRoute 
                       ? 'Cross-Sector Central Oversight, User Provisioning & System Authority' 
-                      : 'Role-Based, Sector-Restricted Infrastructure Surveillance'}
+                      : 'Role-Based, Sector-Restricted Infrastructure Surveillance & Early Warning'}
                   </p>
                 </div>
               </div>

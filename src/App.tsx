@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
-import type { User, Project, ProjectSector, ProjectStatus, ProjectImage, ProjectAuditLog, StoredUser } from './types';
-import { initialProjects, ALL_SECTORS } from './data/mockData';
-import { getStoredUsers, storedUserToAppUser } from './data/userStore';
+import type { User, Project, ProjectSector, ProjectStatus, ProjectImage, StoredUser } from './types';
+import { ALL_SECTORS } from './data/mockData';
+import { storedUserToAppUser } from './data/userStore';
+import { 
+  getProjectsTable, 
+  getUsersTable, 
+  updateProjectStatus as dbUpdateProjectStatus, 
+  addImageToProject as dbAddImageToProject, 
+  subscribeToDatabase, 
+  resetDatabase 
+} from './services/unifiedDatabase';
 import { GovHeader } from './components/gov/GovHeader';
 import { GovNav } from './components/gov/GovNav';
 import { Login } from './components/gov/Login';
@@ -9,9 +17,9 @@ import { SectorDashboard } from './components/gov/SectorDashboard';
 import { ProjectDetail } from './components/gov/ProjectDetail';
 import { AdminPanel } from './components/gov/AdminPanel';
 import { AllProjectsView } from './components/gov/AllProjectsView';
+import { ReportsSection } from './components/gov/ReportsSection';
 
-const STORAGE_PROJECTS_KEY = 'sih26103_projects_v3';
-const STORAGE_CURRENT_USER_KEY = 'sih26103_current_user_v3';
+const STORAGE_CURRENT_USER_KEY = 'prevision_current_user_v4';
 
 export default function App() {
   // Check URL hash for admin route: #admin-login or #admin
@@ -29,9 +37,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Initialize Users from userStore (localStorage backed)
+  // Initialize Users from unified database
   const [storedUsersList, setStoredUsersList] = useState<StoredUser[]>(() => {
-    return getStoredUsers();
+    return getUsersTable();
   });
 
   // Initialize Current User (restore from localStorage if valid)
@@ -45,21 +53,24 @@ export default function App() {
       console.error(e);
     }
     // Default to Rahul Sharma (Railways) for immediate preview, or null if logged out
-    const defaults = getStoredUsers();
+    const defaults = getUsersTable();
     const defaultOfficer = defaults.find((u) => u.user_id === 'rahul_railways') || defaults[0];
     return defaultOfficer ? storedUserToAppUser(defaultOfficer) : null;
   });
 
-  // Initialize Projects from storage or mock data
+  // Initialize Projects from unified database
   const [projects, setProjects] = useState<Project[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_PROJECTS_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialProjects;
+    return getProjectsTable();
   });
+
+  // Listen for database changes across all pages and components
+  useEffect(() => {
+    const unsubscribe = subscribeToDatabase(() => {
+      setProjects(getProjectsTable());
+      setStoredUsersList(getUsersTable());
+    });
+    return unsubscribe;
+  }, []);
 
   // Active Sector being monitored
   const [activeSector, setActiveSector] = useState<ProjectSector | 'All'>(() => {
@@ -73,16 +84,9 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
 
   // Selected Project for Inspection
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projects[0]?.id || null);
-
-  // Sync projects to LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [projects]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    return projects[0]?.id || null;
+  });
 
   // Sync currentUser to LocalStorage
   useEffect(() => {
@@ -155,55 +159,32 @@ export default function App() {
     }
   };
 
-  // Project Mutations
+  // Project Mutations via Unified Database
   const handleUpdateProjectStatus = (projectId: string, newStatus: ProjectStatus, note: string) => {
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== projectId) return p;
-        const newAudit: ProjectAuditLog = {
-          id: `aud-${Date.now()}`,
-          date: 'Today, 2026',
-          author: currentUser?.name || 'Monitoring Officer',
-          role: currentUser?.designation || 'Sector Officer',
-          actionTaken: `Status adjusted to ${newStatus}`,
-          note: note || 'Inspection report review completed',
-          previousRiskScore: p.riskScore || 50,
-          newRiskScore: newStatus === 'On Track' ? 25 : newStatus === 'At Risk' ? 65 : 85
-        };
-        return {
-          ...p,
-          status: newStatus,
-          lastUpdated: 'Today, 2026',
-          auditTrail: [newAudit, ...(p.auditTrail || [])]
-        };
-      })
+    dbUpdateProjectStatus(
+      projectId,
+      newStatus,
+      note,
+      currentUser?.name || 'Monitoring Officer',
+      currentUser?.designation || 'Sector Officer'
     );
   };
 
   const handleAddProjectImage = (projectId: string, newImage: ProjectImage) => {
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== projectId) return p;
-        return {
-          ...p,
-          images: [newImage, ...(p.images || [])],
-          lastUpdated: 'Today, 2026'
-        };
-      })
-    );
+    dbAddImageToProject(projectId, newImage);
   };
 
-  // User Management
-  const handleAddUser = (_newUser: User) => {
-    setStoredUsersList(getStoredUsers());
+  // User Management callbacks for Admin Panel
+  const handleAddUser = () => {
+    setStoredUsersList(getUsersTable());
   };
 
-  const handleUpdateUserSector = (_userId: string, _newSector: ProjectSector) => {
-    setStoredUsersList(getStoredUsers());
+  const handleUpdateUserSector = () => {
+    setStoredUsersList(getUsersTable());
   };
 
-  const handleToggleUserStatus = (_userId: string) => {
-    setStoredUsersList(getStoredUsers());
+  const handleToggleUserStatus = () => {
+    setStoredUsersList(getUsersTable());
   };
 
   // If user is not logged in, render the official Login page
@@ -226,13 +207,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
-      {/* 1. Official Government Header with Emblem and Officer Info */}
+      {/* 1. Simplified PREVISION Header with Officer Info & Quick Report Download */}
       <GovHeader
         currentUser={currentUser}
         activeSector={activeSector}
         onSelectSector={handleSelectSector}
         onLogout={handleLogout}
         availableSectors={ALL_SECTORS as unknown as ProjectSector[]}
+        onOpenReports={() => {
+          setCurrentPage('reports');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onSwitchUser={(targetUserId) => {
+          const allUsers = getUsersTable();
+          const target = allUsers.find((u) => u.user_id === targetUserId);
+          if (target) {
+            handleLogin(target);
+          }
+        }}
       />
 
       {/* 2. Primary Government Navigation Bar */}
@@ -272,12 +264,22 @@ export default function App() {
           />
         )}
 
+        {currentPage === 'reports' && (
+          <ReportsSection
+            projects={projects}
+            currentUser={currentUser}
+            activeSector={activeSector}
+            onSelectProject={handleSelectProject}
+          />
+        )}
+
         {currentPage === 'project_detail' && currentSelectedProject && (
           <ProjectDetail
             project={currentSelectedProject}
             onBack={() => setCurrentPage('dashboard')}
             onUpdateStatus={handleUpdateProjectStatus}
             onAddImage={handleAddProjectImage}
+            onSelectProject={handleSelectProject}
           />
         )}
 
@@ -292,19 +294,19 @@ export default function App() {
         )}
       </main>
 
-      {/* 4. Official Government Footer */}
+      {/* 4. Official PREVISION Footer */}
       <footer className="w-full bg-slate-900 text-slate-400 text-xs py-5 px-4 sm:px-8 border-t border-slate-800 mt-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center font-bold text-amber-300 text-xs border border-white/20">
-              GOI
+            <div className="w-8 h-8 rounded bg-blue-600/20 text-blue-400 flex items-center justify-center font-black text-xs border border-blue-500/30">
+              P
             </div>
             <div>
               <div className="font-semibold text-slate-200">
-                SIH26103 — National Infrastructure Project Monitoring Portal
+                PREVISION — Multi-Sector Infrastructure Project Monitoring & Early Warning Portal
               </div>
               <div className="text-[11px] text-slate-400">
-                Ministry of Statistics & Programme Implementation (MoSPI) • National Informatics Centre (NIC)
+                AI Surveillance • PRAEVISIO 4-Pillar Decision Framework (Predict, Explain, Warn, Recommend)
               </div>
             </div>
           </div>
@@ -324,8 +326,7 @@ export default function App() {
             <span>•</span>
             <span 
               onClick={() => {
-                localStorage.removeItem(STORAGE_PROJECTS_KEY);
-                localStorage.removeItem('sih26103_users_db_v1');
+                resetDatabase();
                 localStorage.removeItem(STORAGE_CURRENT_USER_KEY);
                 window.location.reload();
               }}

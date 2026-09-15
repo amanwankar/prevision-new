@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { User, ProjectSector, StoredUser } from '../../types';
 import { getStoredUsers, createStoredUser, saveStoredUsers, storedUserToAppUser } from '../../data/userStore';
+import { subscribeToDatabase } from '../../services/unifiedDatabase';
 
 interface AdminPanelProps {
   users: User[];
@@ -55,9 +56,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
-  // Load from userStore on mount
+  // Load from userStore on mount and subscribe to unified database
   useEffect(() => {
     setStoredUsers(getStoredUsers());
+    const unsubscribe = subscribeToDatabase(() => {
+      setStoredUsers(getStoredUsers());
+    });
+    return unsubscribe;
   }, []);
 
   const refreshUsers = () => {

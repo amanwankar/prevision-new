@@ -1,4 +1,5 @@
 import type { Project, EarlyWarning, RecommendedAction, User, Department, RiskHistory } from '../types';
+import { MAHARASHTRA_REAL_PROJECTS } from './maharashtraProjects';
 
 export const ALL_SECTORS = [
   'Roads & Highways',
@@ -116,6 +117,7 @@ export const sampleDepartments: Department[] = [
 ];
 
 export const initialProjects: Project[] = [
+  ...MAHARASHTRA_REAL_PROJECTS,
   {
     id: 'PRJ-002',
     code: 'PRJ-002',
