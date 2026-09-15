@@ -50,15 +50,6 @@ export const GovHeader: React.FC<GovHeaderProps> = ({
               National Infrastructure Project Monitoring & Early Warning
             </p>
           </div>
-
-          {/* PREVISION Multi-Horizon Predictive Surveillance Live Indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full text-[11px] font-medium border border-slate-800 shadow-xs ml-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="font-bold text-slate-200">Surveillance:</span>
-            <span className="text-slate-300">3m/6m/12m Horizons Active</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-amber-300 font-semibold">EVM + SHAP</span>
-          </div>
         </div>
 
         {/* Right: Actions, Sector, and User Info */}
@@ -79,13 +70,13 @@ export const GovHeader: React.FC<GovHeaderProps> = ({
             )}
 
             {/* Sector Selector / Badge */}
-            {currentUser.role === 'admin' ? (
+            {(currentUser.role === 'admin' || currentUser.user_id === 'rajesh_head') ? (
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setSectorDropdownOpen(!sectorDropdownOpen)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-md text-xs font-semibold transition cursor-pointer"
-                  title="Filter Sector View (Admin)"
+                  title="Filter Sector View"
                 >
                   <Building2 size={13} className="text-blue-800 shrink-0" />
                   <span className="max-w-[110px] sm:max-w-[150px] truncate">
@@ -94,7 +85,7 @@ export const GovHeader: React.FC<GovHeaderProps> = ({
                   <ChevronDown size={13} className="text-slate-500" />
                 </button>
 
-                {/* Sector Dropdown Menu for Admin */}
+                {/* Sector Dropdown Menu */}
                 {sectorDropdownOpen && (
                   <>
                     <div
@@ -156,18 +147,30 @@ export const GovHeader: React.FC<GovHeaderProps> = ({
                 title="Switch Officer Persona"
               >
                 <div 
-                  className="w-7 h-7 rounded-full bg-blue-900 text-amber-300 border border-blue-950 flex items-center justify-center font-bold text-xs shrink-0"
+                  className={`w-7 h-7 rounded-full ${
+                    currentUser.user_id === 'rajesh_head' 
+                      ? 'bg-slate-900 text-amber-300 border-2 border-amber-400' 
+                      : 'bg-blue-900 text-amber-300 border border-blue-950'
+                  } flex items-center justify-center font-bold text-xs shrink-0`}
                 >
                   {currentUser.name.charAt(0)}
                 </div>
 
                 <div className="hidden lg:block text-left">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1">
-                    <span>{currentUser.name}</span>
+                    <span>
+                      {currentUser.user_id === 'rajesh_head' 
+                        ? 'Rajesh Kumar — National Head' 
+                        : currentUser.name}
+                    </span>
                     <ChevronDown size={11} className="text-slate-400" />
                   </div>
-                  <div className="text-[10px] text-slate-500 truncate max-w-[130px]">
-                    {currentUser.role === 'admin' ? 'Administrator' : `${currentUser.sector || 'Officer'}`}
+                  <div className="text-[10px] text-slate-500 truncate max-w-[160px]">
+                    {currentUser.user_id === 'rajesh_head' 
+                      ? 'Full Portfolio Access' 
+                      : currentUser.role === 'admin' 
+                      ? 'Administrator' 
+                      : `${currentUser.sector || 'Officer'}`}
                   </div>
                 </div>
               </button>
@@ -184,6 +187,27 @@ export const GovHeader: React.FC<GovHeaderProps> = ({
                       <span>Switch PREVISION Persona</span>
                       <UserCheck size={12} className="text-blue-600" />
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSwitchUser('rajesh_head');
+                        setOfficerDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer ${
+                        currentUser.user_id === 'rajesh_head' ? 'bg-slate-900 text-white font-bold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className={`font-bold ${currentUser.user_id === 'rajesh_head' ? 'text-amber-300' : 'text-slate-900'}`}>
+                          Rajesh Kumar
+                        </div>
+                        <div className={`text-[10px] ${currentUser.user_id === 'rajesh_head' ? 'text-slate-300' : 'text-slate-500'}`}>
+                          National Infrastructure Head (Full Access)
+                        </div>
+                      </div>
+                      {currentUser.user_id === 'rajesh_head' && <Check size={14} className="text-amber-300" />}
+                    </button>
 
                     <button
                       type="button"

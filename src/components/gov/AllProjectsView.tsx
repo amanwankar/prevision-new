@@ -7,12 +7,15 @@ import {
   Eye, 
   LayoutGrid, 
   Table as TableIcon,
-  ChevronRight
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 import type { Project, ProjectSector, User } from '../../types';
 import { StatusBadge } from './StatusBadge';
 import { ProjectCard } from './ProjectCard';
 import { matchSector } from '../../data/userStore';
+import { getProjectStatus } from '../../utils/statusUtils';
 
 interface AllProjectsViewProps {
   projects: Project[];
@@ -53,9 +56,10 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
 
       let matchesStatus = true;
       if (selectedStatus !== 'ALL') {
-        if (selectedStatus === 'On Track') matchesStatus = p.status === 'On Track' || p.status === 'Completed';
-        else if (selectedStatus === 'At Risk') matchesStatus = p.status === 'At Risk';
-        else if (selectedStatus === 'Delayed') matchesStatus = p.status === 'Delayed' || p.status === 'Critical Overrun';
+        const canonical = getProjectStatus(p);
+        if (selectedStatus === 'On Track') matchesStatus = canonical === 'ON TRACK';
+        else if (selectedStatus === 'At Risk') matchesStatus = canonical === 'AT RISK';
+        else if (selectedStatus === 'Delayed') matchesStatus = canonical === 'DELAYED';
       }
 
       return matchesSearch && matchesStatus;
@@ -73,6 +77,27 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
       return (b.lastUpdated || '').localeCompare(a.lastUpdated || '');
     });
   }, [projects, searchQuery, selectedSector, selectedStatus, sortBy, isOfficer, officerSector]);
+
+  // Dynamic status counts for All Projects view
+  const statusCounts = useMemo(() => {
+    let onTrack = 0;
+    let atRisk = 0;
+    let delayed = 0;
+    projects.forEach((p) => {
+      if (isOfficer && !matchSector(p.sector, officerSector as string)) return;
+      if (!isOfficer && selectedSector !== 'ALL' && !matchSector(p.sector, selectedSector)) return;
+      const st = getProjectStatus(p);
+      if (st === 'ON TRACK') onTrack++;
+      else if (st === 'AT RISK') atRisk++;
+      else if (st === 'DELAYED') delayed++;
+    });
+    return {
+      total: onTrack + atRisk + delayed,
+      onTrack,
+      atRisk,
+      delayed
+    };
+  }, [projects, isOfficer, officerSector, selectedSector]);
 
   return (
     <div className="space-y-6">
@@ -142,10 +167,10 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 bg-white cursor-pointer font-medium"
             >
-              <option value="ALL">All Health Statuses</option>
-              <option value="On Track">On Track (Green)</option>
-              <option value="At Risk">At Risk (Yellow)</option>
-              <option value="Delayed">Delayed (Red)</option>
+              <option value="ALL">All Health Statuses ({statusCounts.total})</option>
+              <option value="On Track">On Track ({statusCounts.onTrack})</option>
+              <option value="Delayed">Delayed ({statusCounts.delayed})</option>
+              <option value="At Risk">At Risk ({statusCounts.atRisk})</option>
             </select>
           </div>
 
@@ -184,6 +209,64 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Status Filter Buttons */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+          <span className="text-slate-700 font-bold mr-1 text-xs uppercase tracking-wider">
+            Status:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('ALL')}
+            style={selectedStatus === 'ALL' ? { backgroundColor: '#0f172a', borderColor: '#0f172a' } : undefined}
+            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer border ${
+              selectedStatus === 'ALL'
+                ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
+            }`}
+          >
+            All ({statusCounts.total})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('On Track')}
+            style={selectedStatus === 'On Track' ? { backgroundColor: '#22c55e', borderColor: '#22c55e' } : undefined}
+            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              selectedStatus === 'On Track'
+                ? 'bg-[#22c55e] text-white border-[#22c55e] shadow-xs'
+                : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
+            }`}
+          >
+            <CheckCircle2 size={13} className={selectedStatus === 'On Track' ? 'text-white' : 'text-[#22c55e]'} />
+            <span>On Track ({statusCounts.onTrack})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('Delayed')}
+            style={selectedStatus === 'Delayed' ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : undefined}
+            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              selectedStatus === 'Delayed'
+                ? 'bg-[#ef4444] text-white border-[#ef4444] shadow-xs'
+                : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
+            }`}
+          >
+            <AlertCircle size={13} className={selectedStatus === 'Delayed' ? 'text-white' : 'text-[#ef4444]'} />
+            <span>Delayed ({statusCounts.delayed})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('At Risk')}
+            style={selectedStatus === 'At Risk' ? { backgroundColor: '#f59e0b', borderColor: '#f59e0b' } : undefined}
+            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              selectedStatus === 'At Risk'
+                ? 'bg-[#f59e0b] text-white border-[#f59e0b] shadow-xs'
+                : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
+            }`}
+          >
+            <AlertTriangle size={13} className={selectedStatus === 'At Risk' ? 'text-white' : 'text-[#f59e0b]'} />
+            <span>At Risk ({statusCounts.atRisk})</span>
+          </button>
         </div>
       </div>
 
@@ -237,7 +320,7 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
                       <div className="text-[11px] text-slate-500 pl-4">{p.state}</div>
                     </td>
                     <td>
-                      <StatusBadge status={p.status} size="sm" />
+                      <StatusBadge status={getProjectStatus(p)} size="sm" />
                     </td>
                     <td className="text-right font-bold text-slate-900 text-sm">
                       ₹{cost.toLocaleString()} Cr
@@ -279,12 +362,17 @@ export const AllProjectsView: React.FC<AllProjectsViewProps> = ({
           </table>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProjects.map((p) => (
             <ProjectCard
               key={p.id}
               project={p}
               onSelect={() => onSelectProject(p.id)}
+              statusOverride={
+                selectedStatus === 'On Track' ? 'ON TRACK' :
+                selectedStatus === 'Delayed' ? 'DELAYED' :
+                selectedStatus === 'At Risk' ? 'AT RISK' : undefined
+              }
             />
           ))}
         </div>

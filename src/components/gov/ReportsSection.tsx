@@ -19,13 +19,15 @@ interface ReportsSectionProps {
   currentUser: User | null;
   activeSector: ProjectSector | 'All';
   onSelectProject?: (projectId: string) => void;
+  onBack?: () => void;
 }
 
 export const ReportsSection: React.FC<ReportsSectionProps> = ({
   projects,
   currentUser,
   activeSector,
-  onSelectProject
+  onSelectProject,
+  onBack
 }) => {
   // Filter projects by active sector or search term
   const [searchTerm, setSearchTerm] = useState('');
@@ -205,6 +207,15 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({
       {/* Header Banner */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 mb-2 cursor-pointer transition"
+            >
+              <span>← Back to Dashboard</span>
+            </button>
+          )}
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-1">
             <Sparkles size={14} className="text-blue-600" />
             <span>PREVISION Project Intelligence & Early Warning Reports</span>

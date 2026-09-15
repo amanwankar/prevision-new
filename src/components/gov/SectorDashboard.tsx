@@ -19,11 +19,52 @@ import type { Project, ProjectSector, User } from '../../types';
 import { StatusBadge } from './StatusBadge';
 import { ProjectCard } from './ProjectCard';
 import { matchSector } from '../../data/userStore';
-import { 
-  MAHARASHTRA_DIVISIONS, 
-  isProjectInSelectedDivisions, 
-  countProjectsInDivision 
-} from '../../utils/maharashtraDivisions';
+import { getProjectStatus } from '../../utils/statusUtils';
+
+export type MaharashtraDivision = 
+  | 'All Divisions'
+  | 'Konkan'
+  | 'Nashik'
+  | 'Pune'
+  | 'Aurangabad (Chhatrapati Sambhajinagar)'
+  | 'Amravati'
+  | 'Nagpur';
+
+export const MAHARASHTRA_DIVISIONS: { id: MaharashtraDivision; label: string }[] = [
+  { id: 'All Divisions', label: 'All Divisions' },
+  { id: 'Konkan', label: 'Konkan' },
+  { id: 'Nashik', label: 'Nashik' },
+  { id: 'Pune', label: 'Pune' },
+  { id: 'Aurangabad (Chhatrapati Sambhajinagar)', label: 'Aurangabad (Chhatrapati Sambhajinagar)' },
+  { id: 'Amravati', label: 'Amravati' },
+  { id: 'Nagpur', label: 'Nagpur' }
+];
+
+const DIVISION_DISTRICTS: Record<MaharashtraDivision, string[]> = {
+  'All Divisions': [],
+  'Konkan': ['mumbai', 'mumbai suburban', 'thane', 'palghar', 'raigad', 'ratnagiri', 'sindhudurg', 'navi mumbai', 'jnpt', 'uran', 'alibaug', 'konkan'],
+  'Nashik': ['nashik', 'dhule', 'nandurbar', 'jalgaon', 'ahmednagar', 'ahilyanagar', 'shirdi', 'manmad', 'malegaon'],
+  'Pune': ['pune', 'satara', 'sangli', 'solapur', 'kolhapur', 'baramati', 'miraj', 'karad', 'pcmc', 'pimpri'],
+  'Aurangabad (Chhatrapati Sambhajinagar)': ['aurangabad', 'chhatrapati sambhajinagar', 'sambhajinagar', 'jalna', 'beed', 'nanded', 'osmanabad', 'dharashiv', 'latur', 'parbhani', 'hingoli'],
+  'Amravati': ['amravati', 'akola', 'buldhana', 'buldana', 'yavatmal', 'washim', 'khamgaon', 'shegaon'],
+  'Nagpur': ['nagpur', 'wardha', 'bhandara', 'gondia', 'chandrapur', 'gadchiroli', 'butibori', 'umred', 'ramtek', 'vidarbha']
+};
+
+function matchesDivision(project: Project, division: MaharashtraDivision): boolean {
+  if (division === 'All Divisions') return true;
+  const keywords = DIVISION_DISTRICTS[division];
+  if (!keywords || keywords.length === 0) return true;
+
+  const text = [
+    project.district || '',
+    project.locationName || '',
+    project.location_name || '',
+    project.name || '',
+    project.state || ''
+  ].join(' ').toLowerCase();
+
+  return keywords.some(kw => text.includes(kw));
+}
 
 interface SectorDashboardProps {
   projects: Project[];
@@ -43,10 +84,11 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'On Track' | 'At Risk' | 'Delayed'>('ALL');
   const [roadSubFilter, setRoadSubFilter] = useState<'ALL' | 'NH' | 'BOT' | 'PMGSY' | 'STRUCTURES'>('ALL');
+  const [selectedDivision, setSelectedDivision] = useState<MaharashtraDivision>('All Divisions');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [sortBy, setSortBy] = useState<'updated' | 'cost' | 'progress'>('updated');
 
-  const isOfficer = currentUser.role !== 'admin';
+  const isOfficer = currentUser.role !== 'admin' && currentUser.user_id !== 'rajesh_head';
   const officerSector = currentUser.sector || currentUser.assignedSectors?.[0] || 'Railways';
   const effectiveSector = isOfficer ? officerSector : activeSector;
   const isRoadSector = matchSector('Roads & Highways', effectiveSector as string);
@@ -94,12 +136,13 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
 
       let matchesStatus = true;
       if (statusFilter !== 'ALL') {
+        const canonical = getProjectStatus(p);
         if (statusFilter === 'On Track') {
-          matchesStatus = p.status === 'On Track' || p.status === 'Completed';
+          matchesStatus = canonical === 'ON TRACK';
         } else if (statusFilter === 'At Risk') {
-          matchesStatus = p.status === 'At Risk';
+          matchesStatus = canonical === 'AT RISK';
         } else if (statusFilter === 'Delayed') {
-          matchesStatus = p.status === 'Delayed' || p.status === 'Critical Overrun';
+          matchesStatus = canonical === 'DELAYED';
         }
       }
 
@@ -119,7 +162,9 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
         }
       }
 
-      return matchesSearch && matchesStatus && matchesRoadSub;
+      const matchesDiv = matchesDivision(p, selectedDivision);
+
+      return matchesSearch && matchesStatus && matchesRoadSub && matchesDiv;
     }).sort((a, b) => {
       if (sortBy === 'cost') {
         const costA = a.costCr || a.revisedBudgetCr || a.originalBudgetCr || 0;
@@ -133,7 +178,7 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
       }
       return (b.lastUpdated || '').localeCompare(a.lastUpdated || '');
     });
-  }, [sectorProjects, searchQuery, statusFilter, roadSubFilter, isRoadSector, sortBy]);
+  }, [sectorProjects, searchQuery, statusFilter, roadSubFilter, isRoadSector, sortBy, selectedDivision]);
 
   // Health Metrics for the Sector
   const metrics = useMemo(() => {
@@ -145,10 +190,10 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
     let sumProgress = 0;
 
     sectorProjects.forEach((p) => {
-      const st = p.status.toLowerCase();
-      if (st.includes('track') || st.includes('completed')) onTrackCount++;
-      else if (st.includes('risk')) atRiskCount++;
-      else if (st.includes('delay') || st.includes('critical')) delayedCount++;
+      const canonical = getProjectStatus(p);
+      if (canonical === 'ON TRACK') onTrackCount++;
+      else if (canonical === 'AT RISK') atRiskCount++;
+      else if (canonical === 'DELAYED') delayedCount++;
 
       const cost = p.costCr || p.revisedBudgetCr || p.originalBudgetCr || 0;
       totalCostCr += cost;
@@ -252,15 +297,23 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded bg-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wider border border-blue-200">
-                {isOfficer ? `Assigned Jurisdiction: ${effectiveSector}` : effectiveSector === 'All' ? 'Consolidated National View' : `Admin Filter: ${effectiveSector}`}
+                {currentUser.user_id === 'rajesh_head' 
+                  ? 'National Leadership Portfolio' 
+                  : isOfficer 
+                  ? `Assigned Jurisdiction: ${effectiveSector}` 
+                  : effectiveSector === 'All' 
+                  ? 'Consolidated National View' 
+                  : `Admin Filter: ${effectiveSector}`}
               </span>
               <span className="text-xs text-slate-500 font-medium">
-                Scope: <strong className="text-slate-800">{currentUser.name}</strong> ({isOfficer ? `${effectiveSector} Sector Officer` : 'System Administrator'})
+                Scope: <strong className="text-slate-800">{currentUser.name}</strong> ({currentUser.user_id === 'rajesh_head' ? 'National Head' : isOfficer ? `${effectiveSector} Sector Officer` : 'System Administrator'})
               </span>
             </div>
             {/* Prominent Welcome Greeting as requested */}
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              {isOfficer 
+              {currentUser.user_id === 'rajesh_head'
+                ? `Welcome, Rajesh Kumar — National Head Portfolio Dashboard`
+                : isOfficer 
                 ? `Welcome, ${currentUser.name} — ${effectiveSector} Sector Dashboard`
                 : effectiveSector === 'All'
                   ? `Welcome, ${currentUser.name} — Central Administration (All Sectors)`
@@ -268,7 +321,9 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
               }
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
-              {isOfficer 
+              {currentUser.user_id === 'rajesh_head'
+                ? `Full portfolio surveillance across all 23 national capital infrastructure projects, multi-division monitoring, and early risk intervention.`
+                : isOfficer 
                 ? `Real-time surveillance of capital projects, physical milestones, expenditure pacing, and risk warnings for the ${effectiveSector} sector.`
                 : `Cross-sector surveillance of national capital projects, physical milestones, and expenditure pacing.`}
             </p>
@@ -495,51 +550,55 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
+              style={statusFilter === 'ALL' ? { backgroundColor: '#0f172a', borderColor: '#0f172a' } : undefined}
               className={`px-3.5 py-2 rounded-lg font-bold transition cursor-pointer border ${
                 statusFilter === 'ALL'
-                  ? 'bg-blue-900 text-white border-blue-950 shadow-xs'
-                  : 'bg-slate-100 text-slate-800 hover:bg-slate-200 border-slate-300'
+                  ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs'
+                  : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
               }`}
             >
-              All ({sectorProjects.length})
+              All ({metrics.total})
             </button>
 
             <button
               type="button"
               onClick={() => setStatusFilter('On Track')}
+              style={statusFilter === 'On Track' ? { backgroundColor: '#22c55e', borderColor: '#22c55e' } : undefined}
               className={`px-3.5 py-2 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                 statusFilter === 'On Track'
-                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                  : 'bg-emerald-50 text-emerald-950 hover:bg-emerald-100 border-emerald-300'
+                  ? 'bg-[#22c55e] text-white border-[#22c55e] shadow-xs'
+                  : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
               }`}
             >
-              <CheckCircle2 size={15} className={statusFilter === 'On Track' ? 'text-white' : 'text-emerald-700'} />
+              <CheckCircle2 size={15} className={statusFilter === 'On Track' ? 'text-white' : 'text-[#22c55e]'} />
               <span>On Track ({metrics.onTrackCount})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setStatusFilter('Delayed')}
+              style={statusFilter === 'Delayed' ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : undefined}
               className={`px-3.5 py-2 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                 statusFilter === 'Delayed'
-                  ? 'bg-rose-700 text-white border-rose-800 shadow-xs'
-                  : 'bg-rose-50 text-rose-950 hover:bg-rose-100 border-rose-300'
+                  ? 'bg-[#ef4444] text-white border-[#ef4444] shadow-xs'
+                  : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
               }`}
             >
-              <AlertCircle size={15} className={statusFilter === 'Delayed' ? 'text-white' : 'text-rose-700'} />
+              <AlertCircle size={15} className={statusFilter === 'Delayed' ? 'text-white' : 'text-[#ef4444]'} />
               <span>Delayed ({metrics.delayedCount})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setStatusFilter('At Risk')}
+              style={statusFilter === 'At Risk' ? { backgroundColor: '#f59e0b', borderColor: '#f59e0b' } : undefined}
               className={`px-3.5 py-2 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 border ${
                 statusFilter === 'At Risk'
-                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                  : 'bg-amber-50 text-amber-950 hover:bg-amber-100 border-amber-300'
+                  ? 'bg-[#f59e0b] text-white border-[#f59e0b] shadow-xs'
+                  : 'bg-white text-slate-800 hover:bg-slate-50 border-slate-300'
               }`}
             >
-              <AlertTriangle size={15} className={statusFilter === 'At Risk' ? 'text-white' : 'text-amber-700'} />
+              <AlertTriangle size={15} className={statusFilter === 'At Risk' ? 'text-white' : 'text-[#f59e0b]' } />
               <span>At Risk ({metrics.atRiskCount})</span>
             </button>
           </div>
@@ -661,33 +720,95 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
         )}
       </div>
 
+      {/* Maharashtra Division Filter Bar */}
+      <div className="bg-white border border-slate-300 rounded-xl p-3.5 sm:p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs uppercase tracking-wider">
+            <MapPin size={16} className="text-blue-800 shrink-0" />
+            <label htmlFor="division-filter-select">Filter by Division:</label>
+          </div>
+          <select
+            id="division-filter-select"
+            value={selectedDivision}
+            onChange={(e) => setSelectedDivision(e.target.value as MaharashtraDivision)}
+            className="text-xs sm:text-sm font-semibold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-700 cursor-pointer shadow-2xs"
+          >
+            {MAHARASHTRA_DIVISIONS.map((div) => (
+              <option key={div.id} value={div.id}>
+                {div.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Dynamic Count Indicator */}
+        <div className="text-xs font-semibold">
+          {selectedDivision !== 'All Divisions' ? (
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+              <span>Showing {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'} in {selectedDivision} Division</span>
+              <button
+                type="button"
+                onClick={() => setSelectedDivision('All Divisions')}
+                className="text-blue-700 hover:text-blue-950 p-0.5 cursor-pointer"
+                title="Reset Division Filter"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <span className="text-slate-500 font-medium">
+              Showing {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'} across All Divisions
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Project Presentation Area: Cards vs Table */}
       {filteredProjects.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
           <Building2 size={40} className="mx-auto text-slate-300 mb-3" />
           <h3 className="text-base font-bold text-slate-800">No Projects Found</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            No projects matched your criteria for the sector "{activeSector}". Try clearing your search or status filter.
+          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+            {selectedDivision !== 'All Divisions'
+              ? `No projects found in ${selectedDivision} Division for this sector.`
+              : `No projects matched your criteria for the sector "${activeSector}". Try clearing your search or status filter.`}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setSearchQuery('');
-              setStatusFilter('ALL');
-            }}
-            className="mt-4 px-4 py-2 bg-blue-700 text-white rounded-md text-xs font-semibold hover:bg-blue-800 transition cursor-pointer"
-          >
-            Reset Filters
-          </button>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            {selectedDivision !== 'All Divisions' && (
+              <button
+                type="button"
+                onClick={() => setSelectedDivision('All Divisions')}
+                className="px-4 py-2 bg-blue-700 text-white rounded-md text-xs font-semibold hover:bg-blue-800 transition cursor-pointer"
+              >
+                Show All Divisions
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+                setSelectedDivision('All Divisions');
+              }}
+              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md text-xs font-semibold hover:bg-slate-200 border border-slate-300 transition cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          </div>
         </div>
       ) : viewMode === 'cards' ? (
         /* Card Grid View using enriched ProjectCard */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProjects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               onSelect={() => onSelectProject(project.id)}
+              statusOverride={
+                statusFilter === 'On Track' ? 'ON TRACK' :
+                statusFilter === 'Delayed' ? 'DELAYED' :
+                statusFilter === 'At Risk' ? 'AT RISK' : undefined
+              }
             />
           ))}
         </div>
@@ -748,7 +869,7 @@ export const SectorDashboard: React.FC<SectorDashboardProps> = ({
                       <div className="text-[11px] text-slate-500 pl-4">{project.state}</div>
                     </td>
                     <td>
-                      <StatusBadge status={project.status} size="sm" />
+                      <StatusBadge status={getProjectStatus(project)} size="sm" />
                     </td>
                     <td className="text-center">
                       <span className={`inline-block font-mono font-bold text-xs px-2 py-0.5 rounded border ${

@@ -70,6 +70,14 @@ export const INITIAL_USERS_TABLE: StoredUser[] = [
     created_at: '2026-09-01'
   },
   {
+    user_id: 'rajesh_head',
+    password_hash: 'head@123',
+    name: 'Rajesh Kumar',
+    sector: 'All Sectors',
+    role: 'admin',
+    created_at: '2026-07-01'
+  },
+  {
     user_id: 'admin',
     password_hash: 'admin123',
     name: 'Priyanka Sen',
@@ -135,7 +143,8 @@ export function updateStoredUserSector(userId: string, newSector: string): boole
  * Converts a StoredUser into the full User object required by UI components.
  */
 export function storedUserToAppUser(stored: StoredUser): User {
-  const isAdm = stored.role === 'admin';
+  const isHead = stored.user_id === 'rajesh_head';
+  const isAdm = stored.role === 'admin' || isHead;
   return {
     id: stored.user_id,
     user_id: stored.user_id,
@@ -145,12 +154,22 @@ export function storedUserToAppUser(stored: StoredUser): User {
     password: stored.password_hash,
     sector: stored.sector as ProjectSector,
     role: isAdm ? 'admin' : 'project_officer',
-    department: isAdm ? 'Central System Administration' : `${stored.sector} Directorate`,
-    designation: isAdm ? 'Central System Administrator' : `${stored.sector} Monitoring Officer`,
+    department: isHead 
+      ? 'National Infrastructure Monitoring Authority' 
+      : isAdm 
+      ? 'Central System Administration' 
+      : `${stored.sector} Directorate`,
+    designation: isHead 
+      ? 'National Head' 
+      : isAdm 
+      ? 'Central System Administrator' 
+      : `${stored.sector} Monitoring Officer`,
     avatarUrl: isAdm
       ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
       : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-    assignedSectors: [stored.sector as ProjectSector],
+    assignedSectors: isHead 
+      ? ['All Sectors' as any] 
+      : [stored.sector as ProjectSector],
     created_at: stored.created_at,
     createdDate: stored.created_at,
     status: 'Active',

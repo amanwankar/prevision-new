@@ -11,7 +11,6 @@ import {
   resetDatabase 
 } from './services/unifiedDatabase';
 import { GovHeader } from './components/gov/GovHeader';
-import { GovNav } from './components/gov/GovNav';
 import { Login } from './components/gov/Login';
 import { SectorDashboard } from './components/gov/SectorDashboard';
 import { ProjectDetail } from './components/gov/ProjectDetail';
@@ -74,7 +73,7 @@ export default function App() {
 
   // Active Sector being monitored
   const [activeSector, setActiveSector] = useState<ProjectSector | 'All'>(() => {
-    if (currentUser?.role === 'admin') return 'All';
+    if (currentUser?.role === 'admin' || currentUser?.user_id === 'rajesh_head') return 'All';
     return (currentUser?.sector as ProjectSector) || 
            (currentUser?.assignedSectors?.[0] as ProjectSector) || 
            'Railways';
@@ -104,7 +103,7 @@ export default function App() {
   // Sync sector whenever current user changes
   useEffect(() => {
     if (currentUser) {
-      if (currentUser.role === 'admin') {
+      if (currentUser.role === 'admin' || currentUser.user_id === 'rajesh_head') {
         setActiveSector('All');
       } else {
         const officerSector = (currentUser.sector as ProjectSector) || 
@@ -120,7 +119,7 @@ export default function App() {
     const appUser = storedUserToAppUser(storedUser);
     setCurrentUser(appUser);
     
-    if (appUser.role === 'admin') {
+    if (appUser.role === 'admin' || appUser.user_id === 'rajesh_head') {
       setActiveSector('All');
       setCurrentPage('dashboard');
     } else {
@@ -150,8 +149,8 @@ export default function App() {
   };
 
   const handleSelectSector = (sector: ProjectSector | 'All') => {
-    // Only admins can switch sectors freely
-    if (currentUser?.role === 'admin') {
+    // Admins and National Head can switch sectors freely
+    if (currentUser?.role === 'admin' || currentUser?.user_id === 'rajesh_head') {
       setActiveSector(sector);
       if (currentPage !== 'dashboard') {
         setCurrentPage('dashboard');
@@ -227,23 +226,7 @@ export default function App() {
         }}
       />
 
-      {/* 2. Primary Government Navigation Bar */}
-      <GovNav
-        currentPage={currentPage}
-        onNavigate={(page) => {
-          // Prevent regular officer from accessing admin panel
-          if (page === 'admin' && currentUser.role !== 'admin') {
-            setCurrentPage('dashboard');
-            return;
-          }
-          setCurrentPage(page);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        userRole={currentUser.role}
-        selectedProjectName={currentSelectedProject?.name}
-      />
-
-      {/* 3. Main Workspace Canvas */}
+      {/* Main Workspace Canvas */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {currentPage === 'dashboard' && (
           <SectorDashboard
@@ -270,6 +253,7 @@ export default function App() {
             currentUser={currentUser}
             activeSector={activeSector}
             onSelectProject={handleSelectProject}
+            onBack={() => setCurrentPage('dashboard')}
           />
         )}
 

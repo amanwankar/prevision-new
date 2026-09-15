@@ -21,19 +21,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   if (normalized.includes('track') || normalized.includes('completed')) {
     // Green
-    colorClasses = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+    colorClasses = 'bg-[#dcfce7] text-[#15803d] border-[#bbf7d0]';
     Icon = CheckCircle2;
-    label = 'On Track';
+    label = 'ON TRACK';
   } else if (normalized.includes('risk')) {
     // Yellow / Amber
-    colorClasses = 'bg-amber-50 text-amber-900 border-amber-300';
+    colorClasses = 'bg-[#fef3c7] text-[#b45309] border-[#fde68a]';
     Icon = AlertTriangle;
-    label = 'At Risk';
+    label = 'AT RISK';
   } else if (normalized.includes('delay') || normalized.includes('overrun') || normalized.includes('critical')) {
     // Red
-    colorClasses = 'bg-rose-50 text-rose-800 border-rose-300';
+    colorClasses = 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]';
     Icon = AlertCircle;
-    label = 'Delayed';
+    label = 'DELAYED';
   } else {
     colorClasses = 'bg-slate-100 text-slate-700 border-slate-300';
     Icon = Clock;

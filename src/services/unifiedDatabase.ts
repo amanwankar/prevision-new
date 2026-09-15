@@ -90,6 +90,20 @@ function loadState(): DatabaseState {
         if (parsed && Array.isArray(parsed.users) && Array.isArray(parsed.projects)) {
           // Verify that all Maharashtra real projects are present
           let modified = false;
+
+          // Ensure National Head user exists
+          if (!parsed.users.some(u => u.user_id === 'rajesh_head')) {
+            parsed.users.unshift({
+              user_id: 'rajesh_head',
+              password_hash: 'head@123',
+              name: 'Rajesh Kumar',
+              sector: 'All Sectors',
+              role: 'admin',
+              created_at: '2026-07-01'
+            });
+            modified = true;
+          }
+
           MAHARASHTRA_REAL_PROJECTS.forEach(realProj => {
             const existingIdx = parsed.projects.findIndex(p => p.id === realProj.id);
             if (existingIdx === -1) {

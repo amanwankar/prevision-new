@@ -375,6 +375,7 @@ export interface Project {
   projectTypeCategory?: string;
   progressGap?: number; // Planned % - Actual %
   spi?: number; // Schedule Performance Index (EV / PV)
+  schedulePerformanceIndex?: number;
   cpi?: number; // Cost Performance Index (EV / AC)
   scheduleVarianceCr?: number; // EV - PV in ₹ Cr
   costVarianceCr?: number; // EV - AC in ₹ Cr

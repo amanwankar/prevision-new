@@ -30,6 +30,7 @@ import { StatusBadge } from './StatusBadge';
 import { ProjectMap } from './ProjectMap';
 import { ProjectImageGallery } from './ProjectImageGallery';
 import { PredictiveIntelligencePanel } from './PredictiveIntelligencePanel';
+import { getProjectStatus } from '../../utils/statusUtils';
 
 type ReadinessChecklist = NonNullable<Project['readinessChecklist']>;
 type ProgrammePackages = NonNullable<Project['programmePackages']>;
@@ -174,7 +175,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
               <span className="px-2.5 py-0.5 rounded bg-blue-900 text-white text-xs font-bold tracking-wide">
                 {project.sector}
               </span>
-              <StatusBadge status={project.status} size="md" />
+              <StatusBadge status={getProjectStatus(project)} size="md" />
               <span className="text-xs text-slate-500 font-medium">
                 Last Updated: <strong className="text-slate-800">{project.lastUpdated || '12 Sep 2026'}</strong>
               </span>
@@ -292,7 +293,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             Health Condition
           </span>
           <div className="my-1">
-            <StatusBadge status={project.status} size="lg" />
+            <StatusBadge status={getProjectStatus(project)} size="lg" />
           </div>
           <div className="text-[11px] text-slate-500">
             Primary Risk: {project.primaryRisk || 'None'}
